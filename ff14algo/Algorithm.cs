@@ -1,8 +1,10 @@
-﻿using System.Security.Cryptography;
+﻿//供开发调试使用，实际使用时请删掉
+//#define DEBUG_ALGORITHM
+
+using System.Security.Cryptography;
 using System.Text;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
-
 namespace ff14algo
 {
     internal class Algorithm
@@ -192,11 +194,14 @@ namespace ff14algo
             }
 
             //little check
-            if(hashIndex*2 + 1 > hashTable.Length)
+            if (hashIndex*2 + 1 > hashTable.Length)
             {
+#if DEBUG_ALGORITHM
+                Console.WriteLine("[GenerateSectionHash]hashIndex too large.");
+#endif
                 hashIndex = 0;
             }
-            
+
             if (dynamicKey.Length != 20)
             {
                 throw new Exception("dynamicKey.Length != 20");
@@ -228,12 +233,18 @@ namespace ff14algo
 
             hash &= 0x7FFFFFFF;
 
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[GenerateSectionHash] Hashed Index:{0}, Value:{1}", hashIndex, hash));
+#endif
             return hash;
         }
 
         //创建动态码表
         private byte[] GenerateTable(byte random)
         {
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[GenerateTable] random{0}", random));
+#endif
             byte[] rawData = { random };
             byte[] mdResult = GetMD5(rawData);
             byte[] table = new byte[16];
@@ -251,8 +262,11 @@ namespace ff14algo
         }
 
         //返回扩增后的（len = 256）
-        private byte[] subExpansion(byte[] data, byte[] baseData)
+        private byte[] SubExpansion(byte[] data, byte[] baseData)
         {
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[SubExpansion] data.len:{0}, baseData.len:{1}", data.Length, baseData.Length));
+#endif
             byte[] result = new byte[256];
 
             uint eax, ebx = 0, ecx, edx, esi, edi;
@@ -305,7 +319,9 @@ namespace ff14algo
                     tmp += edx;
 
                     BitConverter.GetBytes(tmp).CopyTo(result, (i + j) * 4);
-
+#if DEBUG_ALGORITHM
+            Console.Write(string.Format("[i:{0}, j:{1}, tmp:{2}] ",i , j, tmp));
+#endif
                     if (tmp < edx)
                     {
                         eax++;
@@ -316,15 +332,24 @@ namespace ff14algo
                     ecx = esp_0x2C;
                 }
 
+#if DEBUG_ALGORITHM
+                Console.WriteLine("\n\n");
+#endif
+
                 BitConverter.GetBytes(eax).CopyTo(result, (i + 32) * 4);
             }
-
+#if DEBUG_ALGORITHM
+            Console.WriteLine("\n\n\n");
+#endif
             return result;
         }
 
         //返回处理后的Key
         private byte[] obfuscateKey(byte[] reversedTable, byte[] keyExpanded, uint magic, int mainCounter, ref uint processedMagic)
         {
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[obfuscateKey] mainCounter:{0}, magic:{1}", mainCounter, magic));
+#endif
             if (reversedTable.Length != 0x80)
             {
                 throw new Exception();
@@ -338,14 +363,13 @@ namespace ff14algo
             byte[] keyLocal = new byte[0x100];
             keyExpanded.CopyTo(keyLocal, 0);
 
-            uint store = 0;
-            uint _ebp_ = 0;
-            uint mix = 0;
+            uint store;
+            uint _ebp_;
+            uint mix;
             uint edi = 0;
             for (int i = 0; i < 0x20; i++)
             {
                 uint eax, ebx, ecx, edx, esi;
-                uint tmp = 0;
 
                 mix = edi;
 
@@ -353,15 +377,12 @@ namespace ff14algo
                 esi = ecx;
                 eax = BitConverter.ToUInt32(reversedTable, i*4);
                 edi = eax;
-                ebx = 0;
                 ecx &= 0xFFFF;
                 eax &= 0xFFFF;
                 edx = ecx;
                 edx *= eax;
                 esi >>= 0x10;
                 edi >>= 0x10;
-                //mov [ebx],edx ?
-                tmp = edx;
                 ecx*= edi;
                 ebx = esi & 0xFFFF;
                 eax *= ebx;
@@ -385,7 +406,6 @@ namespace ff14algo
                 esi += eax;
                 esi += edi;
                 _ebp_ = esi;
-                edi = esi;
 
                 edi = mix;
 
@@ -406,6 +426,9 @@ namespace ff14algo
                 eax = store;
                 proc -= eax;
                 BitConverter.GetBytes(proc).CopyTo(keyLocal, 124 + 4 * (i - (mainCounter-1)));
+#if DEBUG_ALGORITHM
+                Console.Write(string.Format("[ite:{0}, proc:{1}] ", i,  proc));
+#endif
                 ecx = proc;
                 edx |= 0xFFFFFFFF;
                 edx -= eax;
@@ -419,11 +442,15 @@ namespace ff14algo
             }
 
             processedMagic = edi;
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[final:processedMagic:{0}]", processedMagic));
+            Console.WriteLine("\n\n\n");
+#endif
             return keyLocal;
         }
 
         //算法II
-        private byte[] KeySubTable(byte[] key, byte[] table, int j, ref uint ret_eax)
+        private static byte[] KeySubTable(byte[] key, byte[] table, int j, ref uint ret_eax)
         {
             byte[] expanded = new byte[key.Length];
             key.CopyTo(expanded, 0);
@@ -457,14 +484,17 @@ namespace ff14algo
         //算法II
         private byte[] KeyContraction(byte[] key, byte[] dynamicTable)
         {
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[KeyContraction] key.len:{0}, dynamicTable.len:{1}", key.Length, dynamicTable.Length));
+#endif
             byte[] expanded = new byte[key.Length];
             key.CopyTo(expanded, 0);
             uint esp_0x10 = BitConverter.ToUInt32(dynamicTable, 124);
             uint esp_0x28;
             uint esp_0x14;
             uint eax, ebx, ecx, edx, ebp, esi, edi;
-            uint save_0x100 = 0;
-            uint esp_0x30 = 0;
+            uint save_0x100;
+            uint esp_0x30;
             for (int j = 0; j<0x21; j++)
             {
                 edx = esp_0x10;
@@ -482,7 +512,6 @@ namespace ff14algo
                 edx++;
                 esi = edx;
                 esi >>= 0x10;
-                eax = 0xFFFF;
                 esp_0x10 = edx;
                 esp_0x28 = esi;
                 eax = ebp;
@@ -494,9 +523,8 @@ namespace ff14algo
                 else
                 {
                     edi = esi & 0xffff;
-                    edx = 0;
                     edi++;
-                    eax = eax / edi;
+                    eax /= edi;
                     edx = eax & 0xffff;
                     esp_0x14 = edx;
                     eax = edx;
@@ -621,7 +649,6 @@ namespace ff14algo
                 eax--;
                 esp_0x10 = eax;
                 eax = esi;
-                ecx = ebp;
                 //这里传EDI
 
                 if (edi != 0)
@@ -684,6 +711,9 @@ namespace ff14algo
         //算法II
         private byte[] KeyExpansion(byte[] password, byte[] dynamicKey)
         {
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[KeyExpansion] password.len:{0}, dynamicKey.len:{1}", password.Length, dynamicKey.Length));
+#endif
             //prepare data
             byte[] key = new byte[dynamicKey.Length + password.Length];
             dynamicKey.CopyTo(key, 0);
@@ -695,9 +725,10 @@ namespace ff14algo
             if (randomize)
             {
                 Random rd = new();
-                dynamicTable = GenerateTable((byte)(rd.Next() & 0xFF));
+                byte randomIndex = (byte)(rd.Next() & 0xFF);
+                dynamicTable = GenerateTable(randomIndex);
             }
-           
+
             if (dynamicTable.Length != 16 || password.Length >= 30) //passwordMaxLen = 30
             {
                 throw new Exception();
@@ -759,11 +790,11 @@ namespace ff14algo
             byte[] procKey = new byte[256];
 
             //Key扩增
-            subExpansion(data, data).CopyTo(procKey, 0);
+            SubExpansion(data, data).CopyTo(procKey, 0);
             //Key压缩
             KeyContraction(procKey, dynamicTable).CopyTo(procKey, 0);
             //Key二次扩增
-            subExpansion(procKey, data).CopyTo(procKey, 0);
+            SubExpansion(procKey, data).CopyTo(procKey, 0);
             //Key二次压缩
             KeyContraction(procKey, dynamicTable).CopyTo(procKey, 0);
 
@@ -779,6 +810,9 @@ namespace ff14algo
         //DES加密
         private string DESEncryption(byte[] dynamicKey, byte[] finalKeyInput)
         {
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[DESEncryption] dynamicKey.len:{0}, finalKeyInput.len:{1}", dynamicKey.Length, finalKeyInput.Length));
+#endif
             if (dynamicKey.Length != 20)
             {
                 return "dynamicKey.Length != 0x20";
@@ -798,7 +832,7 @@ namespace ff14algo
                 offset += 5;
             }
 
-            String dynamicKeyOut = "";
+            string dynamicKeyOut = "";
             for (int i = 0; i < byteList.Length; ++i)
             {
                 byteList[i] = (short)(byteList[i] ^ xorList[i]);
@@ -824,10 +858,19 @@ namespace ff14algo
         //登陆密码加密
         public string LoginEncryption(string password, string dynamicKey)
         {
+#if DEBUG_ALGORITHM
+            //randomize = false;
+            //defaultHashIndex = 0;
+            //defaultLaunchCode = 0;
+#endif
+#if DEBUG_ALGORITHM
+            Console.WriteLine(string.Format("[LoginEncryption] password:{0}, dynamicKey:{1}", password, dynamicKey));
+#endif
             byte[] passIn = Encoding.Default.GetBytes(password);
             byte[] dyKeyIn = Encoding.Default.GetBytes(dynamicKey);
             if (passIn.Length == 0 || password.Length > 30)
             {
+
                 return "";
             }
 
@@ -867,72 +910,63 @@ namespace ff14algo
             return DESEncryption(dyKeyIn, result);
         }
 
-        //调试用，关闭随机化
-        public void stopRandomize(uint defaultHashIndex = 0, byte defaultLaunchCode = 0x0)
+        internal sealed class CpuIdAssemblyCode
+           : IDisposable
         {
-            randomize = false;
-            this.defaultHashIndex = defaultHashIndex;
-            this.defaultLaunchCode = defaultLaunchCode;
-        }
-    }
+            [StructLayout(LayoutKind.Sequential)]
+            internal ref struct CpuIdInfo
+            {
+                public uint Eax;
+                public uint Ebx;
+                public uint Ecx;
+                public uint Edx;
 
-    internal sealed class CpuIdAssemblyCode
-       : IDisposable
-    {
-        [StructLayout(LayoutKind.Sequential)]
-        internal ref struct CpuIdInfo
-        {
-            public uint Eax;
-            public uint Ebx;
-            public uint Ecx;
-            public uint Edx;
+            }
 
-        }
+            [DllImport("kernel32.dll", EntryPoint = "VirtualAlloc")]
+            internal static extern IntPtr VirtualAlloc(IntPtr lpAddress, UIntPtr dwSize, uint flAllocationType, uint flProtect);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            private delegate void CpuIDDelegate(int level, ref CpuIdInfo cpuId);
+            [DllImport("kernel32.dll", EntryPoint = "VirtualFree")]
+            internal static extern bool VirtualFree(IntPtr lpAddress, uint dwSize, int dwFreeType);
 
-        [DllImport("kernel32.dll", EntryPoint = "VirtualAlloc")]
-        internal static extern IntPtr VirtualAlloc(IntPtr lpAddress, UIntPtr dwSize, uint flAllocationType, uint flProtect);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate void CpuIDDelegate(int level, ref CpuIdInfo cpuId);
-        [DllImport("kernel32.dll", EntryPoint = "VirtualFree")]
-        internal static extern bool VirtualFree(IntPtr lpAddress, uint dwSize, int dwFreeType);
+            private IntPtr _codePointer;
+            private uint _size;
+            private CpuIDDelegate _delegate;
 
-        private IntPtr _codePointer;
-        private uint _size;
-        private CpuIDDelegate _delegate;
+            public CpuIdAssemblyCode()
+            {
+                byte[] codeBytes = (IntPtr.Size == 4) ? x86CodeBytes : x64CodeBytes;
 
-        public CpuIdAssemblyCode()
-        {
-            byte[] codeBytes = (IntPtr.Size == 4) ? x86CodeBytes : x64CodeBytes;
+                _size = (uint)codeBytes.Length;
+                _codePointer = VirtualAlloc(IntPtr.Zero, new UIntPtr(_size), 0x1000 | 0x2000, 0x40);
 
-            _size = (uint)codeBytes.Length;
-            _codePointer = VirtualAlloc(IntPtr.Zero, new UIntPtr(_size), 0x1000 | 0x2000, 0x40);
+                Marshal.Copy(codeBytes, 0, _codePointer, codeBytes.Length);
+                _delegate = Marshal.GetDelegateForFunctionPointer<CpuIDDelegate>(_codePointer);
+            }
 
-            Marshal.Copy(codeBytes, 0, _codePointer, codeBytes.Length);
-            _delegate = Marshal.GetDelegateForFunctionPointer<CpuIDDelegate>(_codePointer);
-        }
+            ~CpuIdAssemblyCode()
+            {
+                Dispose(false);
+            }
 
-        ~CpuIdAssemblyCode()
-        {
-            Dispose(false);
-        }
+            public void Call(int level, ref CpuIdInfo cpuInfo)
+            {
+                _delegate(level, ref cpuInfo);
+            }
 
-        public void Call(int level, ref CpuIdInfo cpuInfo)
-        {
-            _delegate(level, ref cpuInfo);
-        }
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
+            private void Dispose(bool disposing)
+            {
+                VirtualFree(_codePointer, _size, 0x8000);
+            }
 
-        private void Dispose(bool disposing)
-        {
-            VirtualFree(_codePointer, _size, 0x8000);
-        }
-
-        private readonly static byte[] x86CodeBytes = {
+            private readonly static byte[] x86CodeBytes = {
                 0x55,                   // push        ebp  
                 0x8B, 0xEC,             // mov         ebp,esp
                 0x53,                   // push        ebx  
@@ -954,7 +988,7 @@ namespace ff14algo
                 0xc3                    // ret
                 };
 
-        private readonly static byte[] x64CodeBytes = {
+            private readonly static byte[] x64CodeBytes = {
                 0x53,                       // push rbx    this gets clobbered by cpuid
 
                 // rcx is level
@@ -978,5 +1012,6 @@ namespace ff14algo
                 0x5b,                       // pop rbx
                 0xc3                        // ret
                 };
+        }
     }
 }

@@ -7,6 +7,7 @@ public class Program
         string password = "123456123456";
 
         Algorithm algo = new();
+
         string data = algo.LoginEncryption(password, dynamicKey);
 
         Console.WriteLine(data);
