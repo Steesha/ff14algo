@@ -243,7 +243,7 @@ namespace ff14algo
         private byte[] GenerateTable(byte random)
         {
 #if DEBUG_ALGORITHM
-            Console.WriteLine(string.Format("[GenerateTable] random{0}", random));
+            Console.WriteLine(string.Format("[GenerateTable] randomByte:{0}", random));
 #endif
             byte[] rawData = { random };
             byte[] mdResult = GetMD5(rawData);
@@ -265,7 +265,7 @@ namespace ff14algo
         private byte[] SubExpansion(byte[] data, byte[] expandPass)
         {
 #if DEBUG_ALGORITHM
-            Console.WriteLine(string.Format("[SubExpansion] data.len:{0}, baseData.len:{1}", data.Length, baseData.Length));
+            Console.WriteLine(string.Format("[SubExpansion] data.len:{0}, baseData.len:{1}", data.Length, expandPass.Length));
 #endif
             byte[] result = new byte[256];
 
@@ -458,7 +458,8 @@ namespace ff14algo
             uint t_eax = 0, t_ecx, t_ebp;
             for (int k = 0; k<0x20; k++)
             {
-                t_ecx = BitConverter.ToUInt32(expanded, 120 + 4*k - (j-2)*4);
+                int memoryIndex = 120 + 4*k - (j-2)*4;
+                t_ecx = BitConverter.ToUInt32(expanded, memoryIndex);
                 t_ecx -= t_eax;
                 t_eax = BitConverter.ToUInt32(table, 4*k);
                 t_ebp = 0xffffffff;
@@ -475,7 +476,7 @@ namespace ff14algo
                 }
 
 
-                BitConverter.GetBytes(t_ecx).CopyTo(expanded, 120 + 4*k - (j-2)*4);
+                BitConverter.GetBytes(t_ecx).CopyTo(expanded, memoryIndex);
             }
             ret_eax = t_eax;
             return expanded;
@@ -863,11 +864,6 @@ namespace ff14algo
         public string LoginEncryption(string password, string dynamicKey)
         {
 #if DEBUG_ALGORITHM
-            //randomize = false;
-            //defaultHashIndex = 0;
-            //defaultLaunchCode = 0;
-#endif
-#if DEBUG_ALGORITHM
             Console.WriteLine(string.Format("[LoginEncryption] password:{0}, dynamicKey:{1}", password, dynamicKey));
 #endif
             byte[] passIn = Encoding.Default.GetBytes(password);
@@ -913,6 +909,15 @@ namespace ff14algo
 
             return DESEncryption(dyKeyIn, result);
         }
+
+#if DEBUG_ALGORITHM
+        public void DisableRandomize()
+        {
+            randomize = false;
+            defaultHashIndex = 0;
+            defaultLaunchCode = 0;
+        }
+#endif
 
         internal sealed class CpuIdAssemblyCode
            : IDisposable
