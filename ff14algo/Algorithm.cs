@@ -638,7 +638,8 @@ namespace ff14algo
             password.CopyTo(key, dynamicKey.Length);
 
             //get table & check length
-            byte[] dynamicTable = GenerateTable(0x11);
+            Random rd = new();
+            byte[] dynamicTable = GenerateTable((byte)(rd.Next() & 0xFF));
             if (dynamicTable.Length != 16 || password.Length >= 30) //passwordMaxLen = 30
             {
                 throw new Exception();
