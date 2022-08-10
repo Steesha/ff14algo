@@ -721,12 +721,16 @@ namespace ff14algo
 
             //get table & check length
 
-            byte[] dynamicTable = GenerateTable(defaultLaunchCode);
+            byte[] dynamicTable;
             if (randomize)
             {
                 Random rd = new();
                 byte randomIndex = (byte)(rd.Next() & 0xFF);
                 dynamicTable = GenerateTable(randomIndex);
+            }
+            else
+            {
+                dynamicTable = GenerateTable(defaultLaunchCode);
             }
 
             if (dynamicTable.Length != 16 || password.Length >= 30) //passwordMaxLen = 30
