@@ -5,7 +5,10 @@ public class Program
     {
         string dynamicKey = "46558597235884622939";
         string password = "123456123456";
-        string data = Algorithm.LoginEncryption(password, dynamicKey);
+
+        Algorithm algo = new();
+        string data = algo.LoginEncryption(password, dynamicKey);
+
         Console.WriteLine(data);
     }
 }

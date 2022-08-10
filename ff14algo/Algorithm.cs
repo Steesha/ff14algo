@@ -9,14 +9,14 @@ namespace ff14algo
     {
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool DeviceIoControl(IntPtr HDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, ref uint lpBytesReturned, IntPtr lpOverlapped);
+        private static extern bool DeviceIoControl(IntPtr HDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, ref uint lpBytesReturned, IntPtr lpOverlapped);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CloseHandle(IntPtr hObject);
+        private static extern bool CloseHandle(IntPtr hObject);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+        private static extern IntPtr CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
         private static readonly byte[] boundTable = {
             0xA9, 0xB8, 0x85, 0x39, 0x16, 0xDD, 0x0B, 0xDD, 0x5A, 0x66, 0xC9, 0xAD, 0x5D, 0xE6, 0x87, 0x8C,
             0x1C, 0x2C, 0x82, 0x11, 0x12, 0xE1, 0xB8, 0xD5, 0x5E, 0x20, 0xC5, 0x0C, 0xE3, 0x6B, 0x4D, 0x8E,
@@ -30,7 +30,7 @@ namespace ff14algo
         private static readonly short[] xorList = new short[] { 0xDD, 0xD6, 0xD8, 0xEA, 0xFD, 0xF6, 0xF8, 0xCA };
 
         //hex2byte
-        public static byte[] Hex2byte(string hexString)
+        public byte[] Hex2byte(string hexString)
         {
             if (hexString.Length % 2 != 0)
             {
@@ -45,11 +45,11 @@ namespace ff14algo
         }
 
         //str2byte
-        public static byte[] String2byte(string data, bool reverse = false)
+        public byte[] String2byte(string data, bool reverse = false)
         {
             byte[] buf = System.Text.Encoding.GetEncoding("utf-8").GetBytes(data);
             if (buf == null) throw new Exception();
-            if(reverse)
+            if (reverse)
             {
                 return buf.Reverse().ToArray();
             }
@@ -57,7 +57,7 @@ namespace ff14algo
         }
 
         //获取本机CPUID
-        public static byte[] GetCpuId()
+        private byte[] GetCpuId()
         {
             byte[] cpuBytes = new byte[0x8];
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
@@ -81,7 +81,7 @@ namespace ff14algo
         }
 
         //获取网卡MacAddr
-        private static byte[] GetMacAddress()
+        private byte[] GetMacAddress()
         {
             byte[] result = new byte[0x6];
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -109,7 +109,7 @@ namespace ff14algo
         }
 
         //获取网卡MacAddr
-        private static string SubGetMacAddress(string NicId)
+        private string SubGetMacAddress(string NicId)
         {
             System.IntPtr hDevice = CreateFile("\\\\.\\" + NicId, 0x80000000 | 0x40000000, 0, IntPtr.Zero, 3, 4, IntPtr.Zero);
 
@@ -139,7 +139,7 @@ namespace ff14algo
         }
 
         //获取MD5值
-        private static byte[] GetMD5(byte[] payload)
+        private byte[] GetMD5(byte[] payload)
         {
             MD5? check = MD5.Create();
             byte[]? md5Bytes = check.ComputeHash(payload);
@@ -147,7 +147,7 @@ namespace ff14algo
         }
 
         //默认index=0;networkAddr.Length = 6;返回hash值
-        public static uint GenerateSectionHash(byte[] dynamicKey, byte[] networkAddr, byte[] cpuId, ref uint hashIndex)
+        public uint GenerateSectionHash(byte[] dynamicKey, byte[] networkAddr, byte[] cpuId, ref uint hashIndex)
         {
             hashIndex = 0;
             if (dynamicKey.Length != 20)
@@ -181,7 +181,7 @@ namespace ff14algo
         }
 
         //创建动态码表
-        private static byte[] GenerateTable(byte random)
+        private byte[] GenerateTable(byte random)
         {
             byte[] rawData = { random };
             byte[] mdResult = GetMD5(rawData);
@@ -200,7 +200,7 @@ namespace ff14algo
         }
 
         //返回扩增后的（len = 256）
-        private static byte[] subExpansion(byte[] data, byte[] baseData)
+        private byte[] subExpansion(byte[] data, byte[] baseData)
         {
             byte[] result = new byte[256];
 
@@ -272,14 +272,14 @@ namespace ff14algo
         }
 
         //返回处理后的Key
-        private static byte[] obfuscateKey(byte[] reversedTable, byte[] keyExpanded, uint magic, int mainCounter, ref uint processedMagic)
+        private byte[] obfuscateKey(byte[] reversedTable, byte[] keyExpanded, uint magic, int mainCounter, ref uint processedMagic)
         {
-            if(reversedTable.Length != 0x80)
+            if (reversedTable.Length != 0x80)
             {
                 throw new Exception();
             }
 
-            if(keyExpanded.Length != 0x100)
+            if (keyExpanded.Length != 0x100)
             {
                 throw new Exception();
             }
@@ -291,9 +291,9 @@ namespace ff14algo
             uint _ebp_ = 0;
             uint mix = 0;
             uint edi = 0;
-            for (int i = 0;i < 0x20;i++)
+            for (int i = 0; i < 0x20; i++)
             {
-                uint eax, ebx, ecx, edx, esi; 
+                uint eax, ebx, ecx, edx, esi;
                 uint tmp = 0;
 
                 mix = edi;
@@ -343,10 +343,11 @@ namespace ff14algo
                 edx |= 0xFFFFFFFF;
                 eax -= edi;
                 edx -= edi;
-                if(edx < eax)
+                if (edx < eax)
                 {
                     edi = 0xFFFFFFFF;
-                }else
+                }
+                else
                 {
                     edi = 0;
                 }
@@ -359,7 +360,7 @@ namespace ff14algo
                 edx -= eax;
                 edi = ~edi + 1;
 
-                if(ecx > edx)
+                if (ecx > edx)
                 {
                     edi++;
                 }
@@ -371,7 +372,7 @@ namespace ff14algo
         }
 
         //算法II
-        private static byte[] KeySubTable(byte[] key, byte[] table, int j, ref uint ret_eax)
+        private byte[] KeySubTable(byte[] key, byte[] table, int j, ref uint ret_eax)
         {
             byte[] expanded = new byte[key.Length];
             key.CopyTo(expanded, 0);
@@ -403,7 +404,7 @@ namespace ff14algo
         }
 
         //算法II
-        private static byte[] KeyContraction(byte[] key, byte[] dynamicTable)
+        private byte[] KeyContraction(byte[] key, byte[] dynamicTable)
         {
             byte[] expanded = new byte[key.Length];
             key.CopyTo(expanded, 0);
@@ -630,7 +631,7 @@ namespace ff14algo
         }
 
         //算法II
-        private static byte[] KeyExpansion(byte[] password, byte[] dynamicKey)
+        private byte[] KeyExpansion(byte[] password, byte[] dynamicKey)
         {
             //prepare data
             byte[] key = new byte[dynamicKey.Length + password.Length];
@@ -719,7 +720,7 @@ namespace ff14algo
         }
 
         //DES加密
-        private static string DESEncryption(byte[] dynamicKey, byte[] finalKeyInput)
+        private string DESEncryption(byte[] dynamicKey, byte[] finalKeyInput)
         {
             if (dynamicKey.Length != 20)
             {
@@ -764,16 +765,16 @@ namespace ff14algo
         }
 
         //登陆密码加密
-        public static string LoginEncryption(string password, string dynamicKey)
+        public string LoginEncryption(string password, string dynamicKey)
         {
             byte[] passIn = Encoding.Default.GetBytes(password);
             byte[] dyKeyIn = Encoding.Default.GetBytes(dynamicKey);
-            if(passIn.Length == 0 || password.Length > 30)
+            if (passIn.Length == 0 || password.Length > 30)
             {
                 return "";
             }
 
-            if(dynamicKey.Length != 20)
+            if (dynamicKey.Length != 20)
             {
                 return "";
             }
