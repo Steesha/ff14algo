@@ -262,7 +262,7 @@ namespace ff14algo
         }
 
         //返回扩增后的（len = 256）
-        private byte[] SubExpansion(byte[] data, byte[] baseData)
+        private byte[] SubExpansion(byte[] data, byte[] expandPass)
         {
 #if DEBUG_ALGORITHM
             Console.WriteLine(string.Format("[SubExpansion] data.len:{0}, baseData.len:{1}", data.Length, baseData.Length));
@@ -284,7 +284,7 @@ namespace ff14algo
 
                 for (int j = 0; j < 32; j++)
                 {
-                    eax = BitConverter.ToUInt32(baseData, j*4);
+                    eax = BitConverter.ToUInt32(expandPass, j*4);
                     edx = esp_0x20;
                     esi = ecx & 0xFFFF;
                     ecx = eax;
@@ -721,12 +721,16 @@ namespace ff14algo
 
             //get table & check length
 
-            byte[] dynamicTable = GenerateTable(defaultLaunchCode);
+            byte[] dynamicTable;
             if (randomize)
             {
                 Random rd = new();
                 byte randomIndex = (byte)(rd.Next() & 0xFF);
                 dynamicTable = GenerateTable(randomIndex);
+            }
+            else
+            {
+                dynamicTable = GenerateTable(defaultLaunchCode);
             }
 
             if (dynamicTable.Length != 16 || password.Length >= 30) //passwordMaxLen = 30
