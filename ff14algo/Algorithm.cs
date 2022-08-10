@@ -17,7 +17,7 @@ namespace ff14algo
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
-        private static readonly byte[] boundTable = {
+        private static readonly byte[] boundTable = new byte[] {
             0xA9, 0xB8, 0x85, 0x39, 0x16, 0xDD, 0x0B, 0xDD, 0x5A, 0x66, 0xC9, 0xAD, 0x5D, 0xE6, 0x87, 0x8C,
             0x1C, 0x2C, 0x82, 0x11, 0x12, 0xE1, 0xB8, 0xD5, 0x5E, 0x20, 0xC5, 0x0C, 0xE3, 0x6B, 0x4D, 0x8E,
             0xC8, 0x71, 0xCD, 0x00, 0xA5, 0x6D, 0x8C, 0xDC, 0x87, 0x82, 0x3E, 0x33, 0x41, 0xF8, 0x1E, 0x4B,
@@ -28,6 +28,41 @@ namespace ff14algo
             0x72, 0x7B, 0x93, 0x00, 0xD6, 0x69, 0x81, 0x4D, 0xAD, 0xF8, 0x24, 0xA3, 0xAC, 0x01, 0x91, 0x8B
         };
         private static readonly short[] xorList = new short[] { 0xDD, 0xD6, 0xD8, 0xEA, 0xFD, 0xF6, 0xF8, 0xCA };
+        //长度27*2, 两个字节表示一个hash函数的参数, [0,26]
+        private static readonly byte[] hashTable = new byte[] {
+            27, 5,
+            28, 4,
+            7, 6,
+            7, 7,
+            15, 2,
+            27, 25,
+            29, 14,
+            13, 9,
+            21, 2,
+            5, 8,
+            14, 11,
+            13, 11,
+            26, 11,
+            25, 11,
+            24, 11,
+            23, 11,
+            22, 11,
+            21, 11,
+            20, 11,
+            23, 8,
+            10, 9,
+            15, 5,
+            16, 5,
+            18, 5,
+            7, 3,
+            5, 6,
+            10, 5
+        };
+
+        //与随机化有关的
+        private bool randomize = true;
+        private uint defaultHashIndex = 0;
+        private byte defaultLaunchCode = 0x0;
 
         //hex2byte
         public byte[] Hex2byte(string hexString)
@@ -149,7 +184,19 @@ namespace ff14algo
         //默认index=0;networkAddr.Length = 6;返回hash值
         public uint GenerateSectionHash(byte[] dynamicKey, byte[] networkAddr, byte[] cpuId, ref uint hashIndex)
         {
-            hashIndex = 0;
+            hashIndex = defaultHashIndex;
+            if (randomize)
+            {
+                Random rd = new();
+                hashIndex = (uint)rd.Next(0, 26);
+            }
+
+            //little check
+            if(hashIndex*2 + 1 > hashTable.Length)
+            {
+                hashIndex = 0;
+            }
+            
             if (dynamicKey.Length != 20)
             {
                 throw new Exception("dynamicKey.Length != 20");
@@ -170,9 +217,13 @@ namespace ff14algo
 
             //务必使用uint类型，以进行逻辑移位，如果不使用uint，hash右移只执行算术移位，导致结果不同
             uint hash = (uint)data.Length;
+
+            int p1 = hashTable[hashIndex * 2];
+            int p2 = hashTable[hashIndex * 2 + 1];
+
             for (int i = 0; i < data.Length; i++)
             {
-                hash = (hash<<0x5) ^ (hash >> 0x1B) ^ data[i];
+                hash =  (hash >> p1) ^ (hash << p2) ^ data[i];
             }
 
             hash &= 0x7FFFFFFF;
@@ -639,8 +690,14 @@ namespace ff14algo
             password.CopyTo(key, dynamicKey.Length);
 
             //get table & check length
-            Random rd = new();
-            byte[] dynamicTable = GenerateTable((byte)(rd.Next() & 0xFF));
+
+            byte[] dynamicTable = GenerateTable(defaultLaunchCode);
+            if (randomize)
+            {
+                Random rd = new();
+                dynamicTable = GenerateTable((byte)(rd.Next() & 0xFF));
+            }
+           
             if (dynamicTable.Length != 16 || password.Length >= 30) //passwordMaxLen = 30
             {
                 throw new Exception();
@@ -808,6 +865,14 @@ namespace ff14algo
             cpuId.CopyTo(result, secI.Length + finalKey.Length + 12 + netCard.Length);
 
             return DESEncryption(dyKeyIn, result);
+        }
+
+        //调试用，关闭随机化
+        public void stopRandomize(uint defaultHashIndex = 0, byte defaultLaunchCode = 0x0)
+        {
+            randomize = false;
+            this.defaultHashIndex = defaultHashIndex;
+            this.defaultLaunchCode = defaultLaunchCode;
         }
     }
 
